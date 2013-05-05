@@ -271,7 +271,7 @@ type MergerOptions struct {
 
 type Merger struct {
     cptr *C.struct_mtbl_merger
-    merge interface{}
+    merge MergeFunc
     sourceList *list.List
 }
 
@@ -342,7 +342,7 @@ type SorterOptions struct {
 
 type Sorter struct {
     cptr *C.struct_mtbl_sorter
-    merge interface{}
+    merge MergeFunc
 }
 
 func SorterInit(sopt *SorterOptions) (s *Sorter) {
@@ -413,7 +413,7 @@ type FilesetOptions struct {
 
 type Fileset struct {
     cptr *C.struct_mtbl_fileset
-    merge interface{}
+    merge MergeFunc
     fname string
 }
 
