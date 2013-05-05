@@ -14,21 +14,39 @@ void go_merge_callback(void *,
     uint8_t **, size_t *);
 
 static void
-set_merger_callback(struct mtbl_merger_options *mopt, void *clos)
+set_merger_callback_go(struct mtbl_merger_options *mopt, void *clos)
 {
     mtbl_merger_options_set_merge_func(mopt, go_merge_callback, clos);
 }
 
 static void
-set_sorter_callback(struct mtbl_sorter_options *sopt, void *clos)
+set_merger_callback_c(struct mtbl_merger_options *mopt, void *fp, void *clos)
+{
+    mtbl_merger_options_set_merge_func(mopt, fp, clos);
+}
+
+static void
+set_sorter_callback_go(struct mtbl_sorter_options *sopt, void *clos)
 {
     mtbl_sorter_options_set_merge_func(sopt, go_merge_callback, clos);
 }
 
 static void
-set_fileset_callback(struct mtbl_fileset_options *fopt, void *clos)
+set_sorter_callback_c(struct mtbl_sorter_options *sopt, void *fp, void *clos)
+{
+    mtbl_sorter_options_set_merge_func(sopt, fp, clos);
+}
+
+static void
+set_fileset_callback_go(struct mtbl_fileset_options *fopt, void *clos)
 {
     mtbl_fileset_options_set_merge_func(fopt, go_merge_callback, clos);
+}
+
+static void
+set_fileset_callback_c(struct mtbl_fileset_options *fopt, void *fp, void *clos)
+{
+    mtbl_fileset_options_set_merge_func(fopt, fp, clos);
 }
 
 */
@@ -247,11 +265,13 @@ type MergeFunc func(key []byte, val0 []byte, val1 []byte) (mergedVal []byte)
 
 type MergerOptions struct {
     Merge MergeFunc
+    CMerge unsafe.Pointer
+    CMergeData unsafe.Pointer
 }
 
 type Merger struct {
     cptr *C.struct_mtbl_merger
-    merge MergeFunc
+    merge interface{}
     sourceList *list.List
 }
 
@@ -259,17 +279,24 @@ func MergerInit(mopt *MergerOptions) (m *Merger) {
     if mopt == nil {
         panic("mopt is nil")
     }
-    if mopt.Merge == nil {
-        panic("mopt.Merge is nil")
+    if mopt.Merge == nil && mopt.CMerge == nil {
+        panic("need a merging function")
+    }
+    if mopt.Merge != nil && mopt.CMerge != nil {
+        panic("need exactly one of Merge or CMerge")
     }
 
     m = new(Merger)
-    m.merge = mopt.Merge
+    m.merge = mopt.Merge // keep reference
     m.sourceList = list.New()
 
     c_mopt := C.mtbl_merger_options_init()
     defer C.mtbl_merger_options_destroy(&c_mopt)
-    C.set_merger_callback(c_mopt, unsafe.Pointer(&m.merge))
+    if mopt.Merge != nil {
+        C.set_merger_callback_go(c_mopt, unsafe.Pointer(&mopt.Merge))
+    } else if mopt.CMerge != nil {
+        C.set_merger_callback_c(c_mopt, mopt.CMerge, mopt.CMergeData)
+    }
 
     m.cptr = C.mtbl_merger_init(c_mopt)
     runtime.SetFinalizer(m, func(m *Merger) { m.Destroy() })
@@ -306,26 +333,31 @@ func (m *Merger) String() string {
 /* Sorter */
 
 type SorterOptions struct {
-    Merge MergeFunc
     TempDir string
     MaxMemory uint64
+    Merge MergeFunc
+    CMerge unsafe.Pointer
+    CMergeData unsafe.Pointer
 }
 
 type Sorter struct {
     cptr *C.struct_mtbl_sorter
-    merge MergeFunc
+    merge interface{}
 }
 
 func SorterInit(sopt *SorterOptions) (s *Sorter) {
     if sopt == nil {
         panic("sopt is nil")
     }
-    if sopt.Merge == nil {
-        panic("sopt.Merge is nil")
+    if sopt.Merge == nil && sopt.CMerge == nil {
+        panic("need a merging function")
+    }
+    if sopt.Merge != nil && sopt.CMerge != nil {
+        panic("need exactly one of Merge or CMerge")
     }
 
     s = new(Sorter)
-    s.merge = sopt.Merge
+    s.merge = sopt.Merge // keep reference
 
     c_sopt := C.mtbl_sorter_options_init()
     defer C.mtbl_sorter_options_destroy(&c_sopt)
@@ -337,7 +369,11 @@ func SorterInit(sopt *SorterOptions) (s *Sorter) {
     if sopt.MaxMemory != 0 {
         C.mtbl_sorter_options_set_max_memory(c_sopt, C.size_t(sopt.MaxMemory))
     }
-    C.set_sorter_callback(c_sopt, unsafe.Pointer(&s.merge))
+    if sopt.Merge != nil {
+        C.set_sorter_callback_go(c_sopt, unsafe.Pointer(&sopt.Merge))
+    } else if sopt.CMerge != nil {
+        C.set_sorter_callback_c(c_sopt, sopt.CMerge, sopt.CMergeData)
+    }
 
     s.cptr = C.mtbl_sorter_init(c_sopt)
     runtime.SetFinalizer(s, func(s *Sorter) { s.Destroy() })
@@ -369,13 +405,15 @@ func (s *Sorter) String() string {
 /* Fileset */
 
 type FilesetOptions struct {
-    Merge MergeFunc
     ReloadInterval uint32
+    Merge MergeFunc
+    CMerge unsafe.Pointer
+    CMergeData unsafe.Pointer
 }
 
 type Fileset struct {
     cptr *C.struct_mtbl_fileset
-    merge MergeFunc
+    merge interface{}
     fname string
 }
 
@@ -383,20 +421,27 @@ func FilesetInit(fname string, fopt *FilesetOptions) (f *Fileset, e error) {
     if fopt == nil {
         panic("fopt is nil")
     }
-    if fopt.Merge == nil {
-        panic("fopt.Merge is nil")
+    if fopt.Merge == nil && fopt.CMerge == nil {
+        panic("need a merging function")
+    }
+    if fopt.Merge != nil && fopt.CMerge != nil {
+        panic("need exactly one of Merge or CMerge")
     }
 
     f = new(Fileset)
     f.fname = fname
-    f.merge = fopt.Merge
+    f.merge = fopt.Merge // keep reference
 
     c_fopt := C.mtbl_fileset_options_init()
     defer C.mtbl_fileset_options_destroy(&c_fopt)
     if fopt.ReloadInterval != 0 {
         C.mtbl_fileset_options_set_reload_interval(c_fopt, C.uint32_t(fopt.ReloadInterval))
     }
-    C.set_fileset_callback(c_fopt, unsafe.Pointer(&f.merge))
+    if fopt.Merge != nil {
+        C.set_fileset_callback_go(c_fopt, unsafe.Pointer(&f.merge))
+    } else if fopt.CMerge != nil {
+        C.set_fileset_callback_c(c_fopt, fopt.CMerge, fopt.CMergeData)
+    }
 
     c_fname := C.CString(fname)
     defer C.free(unsafe.Pointer(c_fname))
