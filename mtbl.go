@@ -287,12 +287,12 @@ func MergerInit(mopt *MergerOptions) (m *Merger) {
     }
 
     m = new(Merger)
-    m.merge = mopt.Merge // keep reference
     m.sourceList = list.New()
 
     c_mopt := C.mtbl_merger_options_init()
     defer C.mtbl_merger_options_destroy(&c_mopt)
     if mopt.Merge != nil {
+        m.merge = mopt.Merge // keep gc reference
         C.set_merger_callback_go(c_mopt, unsafe.Pointer(&mopt.Merge))
     } else if mopt.CMerge != nil {
         C.set_merger_callback_c(c_mopt, mopt.CMerge, mopt.CMergeData)
@@ -357,7 +357,6 @@ func SorterInit(sopt *SorterOptions) (s *Sorter) {
     }
 
     s = new(Sorter)
-    s.merge = sopt.Merge // keep reference
 
     c_sopt := C.mtbl_sorter_options_init()
     defer C.mtbl_sorter_options_destroy(&c_sopt)
@@ -370,6 +369,7 @@ func SorterInit(sopt *SorterOptions) (s *Sorter) {
         C.mtbl_sorter_options_set_max_memory(c_sopt, C.size_t(sopt.MaxMemory))
     }
     if sopt.Merge != nil {
+        s.merge = sopt.Merge // keep gc reference
         C.set_sorter_callback_go(c_sopt, unsafe.Pointer(&sopt.Merge))
     } else if sopt.CMerge != nil {
         C.set_sorter_callback_c(c_sopt, sopt.CMerge, sopt.CMergeData)
@@ -430,7 +430,6 @@ func FilesetInit(fname string, fopt *FilesetOptions) (f *Fileset, e error) {
 
     f = new(Fileset)
     f.fname = fname
-    f.merge = fopt.Merge // keep reference
 
     c_fopt := C.mtbl_fileset_options_init()
     defer C.mtbl_fileset_options_destroy(&c_fopt)
@@ -438,6 +437,7 @@ func FilesetInit(fname string, fopt *FilesetOptions) (f *Fileset, e error) {
         C.mtbl_fileset_options_set_reload_interval(c_fopt, C.uint32_t(fopt.ReloadInterval))
     }
     if fopt.Merge != nil {
+        f.merge = fopt.Merge // keep gc reference
         C.set_fileset_callback_go(c_fopt, unsafe.Pointer(&f.merge))
     } else if fopt.CMerge != nil {
         C.set_fileset_callback_c(c_fopt, fopt.CMerge, fopt.CMergeData)
