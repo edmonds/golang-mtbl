@@ -400,6 +400,14 @@ func (s *Sorter) Add(key []byte, val []byte) (e error) {
 	return
 }
 
+func (s *Sorter) Write(w *Writer) (e error) {
+	res := C.mtbl_sorter_write(s.cptr, w.cptr)
+	if res != C.mtbl_res_success {
+		e = fmt.Errorf("mtbl_sorter_write failed")
+	}
+	return
+}
+
 func (s *Sorter) String() string {
 	return fmt.Sprintf("<mtbl.Sorter at %p>", s)
 }
