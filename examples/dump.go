@@ -3,7 +3,7 @@ package main
 import "fmt"
 import "os"
 
-import "mtbl"
+import "github.com/edmonds/golang-mtbl"
 
 func main() {
     if len(os.Args) != 2 {

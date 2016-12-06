@@ -4,7 +4,7 @@ import "fmt"
 import "log"
 import "os"
 
-import "mtbl"
+import "github.com/edmonds/golang-mtbl"
 
 func
 main() {
