@@ -295,7 +295,7 @@ func MergerInit(mopt *MergerOptions) (m *Merger) {
 	defer C.mtbl_merger_options_destroy(&c_mopt)
 	if mopt.Merge != nil {
 		m.merge = mopt.Merge // keep gc reference
-		C.set_merger_callback_go(c_mopt, unsafe.Pointer(&mopt.Merge))
+		C.set_merger_callback_go(c_mopt, unsafe.Pointer(&m.merge))
 	} else if mopt.CMerge != nil {
 		C.set_merger_callback_c(c_mopt, mopt.CMerge, mopt.CMergeData)
 	}
@@ -372,7 +372,7 @@ func SorterInit(sopt *SorterOptions) (s *Sorter) {
 	}
 	if sopt.Merge != nil {
 		s.merge = sopt.Merge // keep gc reference
-		C.set_sorter_callback_go(c_sopt, unsafe.Pointer(&sopt.Merge))
+		C.set_sorter_callback_go(c_sopt, unsafe.Pointer(&s.merge))
 	} else if sopt.CMerge != nil {
 		C.set_sorter_callback_c(c_sopt, sopt.CMerge, sopt.CMergeData)
 	}
