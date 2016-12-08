@@ -82,10 +82,9 @@ func iterInit(s Source, c_it *C.struct_mtbl_iter) (it *Iter) {
 }
 
 func (it *Iter) Destroy() {
-	if it.cptr == nil {
-		panic("it.cptr is nil")
+	if it.cptr != nil {
+		C.mtbl_iter_destroy(&it.cptr)
 	}
-	C.mtbl_iter_destroy(&it.cptr)
 	it = nil
 }
 
